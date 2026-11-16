@@ -1,0 +1,481 @@
+/* Typography and colours follow a warm "paper" style: Source Serif headings, Inter body text,
+   JetBrains Mono for small labels. Bulma is kept only for the grid (columns, container). */
+:root {
+  --ink: #1c1917;
+  --ink-soft: #57534e;
+  --ink-faint: #a8a29e;
+  --paper: #fdfcfa;
+  --paper-dim: #f7f4f0;     /* supporting (baseline) sections */
+  --card: #ffffff;
+  --line: #e7e2dc;
+  --accent: #a05a2c;        /* sandstone */
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, white);
+  --accent-line: color-mix(in srgb, var(--accent) 25%, white);
+  --serif: "Source Serif 4", Georgia, serif;
+  --sans: "Inter", -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Session colours match the paper figures */
+  --session-1: #6ab2d4;   /* 2016 */
+  --session-2: #f3c909;   /* 2017 (Sesoko) / 2018 (Eiffel) */
+  --session-3: #e377c2;   /* 2018 (Sesoko) / 2020 (Eiffel) */
+  --session-multi: #7f7f7f;
+}
+
+html {
+  background: var(--paper);
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+strong {
+  color: inherit;
+}
+
+p + p {
+  margin-top: 14px;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.spaced {
+  margin-top: 22px;
+}
+
+/* ---------- Hero ---------- */
+.hero-header {
+  padding: 72px 24px 32px;
+}
+
+.publication-title {
+  font-family: var(--serif);
+  font-size: clamp(30px, 5vw, 46px);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  max-width: 820px;
+  margin: 0 auto 20px;
+  color: var(--ink);
+}
+
+.authors {
+  font-size: 17px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.authors span {
+  display: inline-block;
+}
+
+.authors a {
+  color: var(--ink-soft);
+}
+
+.authors a:hover {
+  color: var(--accent);
+}
+
+.affil {
+  font-size: 14px;
+  color: var(--ink-faint);
+  margin: 0 0 30px !important;
+}
+
+.btn-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 9px 22px;
+  text-decoration: none !important;
+  transition: all 0.15s ease;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.btn.primary {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.btn.primary:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Greyed-out, non-clickable code button until the repository is public */
+.btn.is-coming-soon,
+.btn.is-coming-soon:hover {
+  color: var(--ink-faint);
+  border-color: var(--line);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------- Teaser ---------- */
+.teaser {
+  padding: 8px 24px 44px;
+}
+
+.tldr {
+  margin: 22px auto 0;
+  max-width: 760px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: 14px;
+  padding: 18px 26px;
+  font-size: 16.5px;
+}
+
+.tldr strong {
+  color: var(--accent);
+}
+
+/* ---------- Sections ---------- */
+.page-section {
+  padding: 44px 24px;
+  border-top: 1px solid var(--line);
+}
+
+.page-section h2 {
+  font-family: var(--serif);
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 20px;
+  color: var(--ink);
+}
+
+/* Baseline comparisons are supporting material: dimmer background, smaller headings */
+.page-section.supporting {
+  background: var(--paper-dim);
+}
+
+.page-section.supporting h2 {
+  font-size: 23px;
+}
+
+.sub-heading {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 30px 0 4px;
+}
+
+.plain-list {
+  list-style: disc;
+  padding-left: 22px;
+  margin-top: 12px;
+}
+
+.plain-list li + li {
+  margin-top: 8px;
+}
+
+/* ---------- Figures and captions ---------- */
+.figure {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+  /* white figure backgrounds blend into the off-white page */
+  mix-blend-mode: multiply;
+}
+
+.figure.narrow {
+  max-width: 480px;
+}
+
+.figure.cloud {
+  max-width: 760px;
+  margin-bottom: 1rem;
+}
+
+.caption {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  text-align: center;
+  margin: 8px 0 20px;
+}
+
+.caption strong {
+  color: var(--ink);
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+/* Session legend: coloured bars like the paper */
+.legend {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 10px 0;
+}
+
+.swatch {
+  display: inline-block;
+  width: 1.4rem;
+  height: 0.35rem;
+  margin: 0 0.35rem 0.15rem 0.9rem;
+  border-radius: 2px;
+  vertical-align: middle;
+  background: var(--c);
+}
+
+.swatch:first-child {
+  margin-left: 0;
+}
+
+.s1 { --c: var(--session-1); }
+.s2 { --c: var(--session-2); }
+.s3 { --c: var(--session-3); }
+.multi { --c: var(--session-multi); }
+.year { border-bottom: 3px solid var(--c); }
+
+/* ---------- Cards (method steps, findings) ---------- */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+  margin-top: 26px;
+}
+
+.step {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 20px;
+}
+
+.step .num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+
+.step h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.step p {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.findings {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+/* ---------- Method toggle (pill tabs) ---------- */
+.method-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.demo-tab {
+  font-family: var(--sans);
+  font-size: 14.5px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 100px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.demo-tab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.demo-tab.is-active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.method-note {
+  min-height: 3em;
+  max-width: 640px;
+  margin: 0 auto 1rem;
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.comparison-row .caption {
+  font-size: 12.5px;
+  margin-bottom: 0;
+}
+
+/* ---------- Tables ---------- */
+.table-container {
+  overflow-x: auto;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+  margin-top: 14px;
+}
+
+.results-table th,
+.results-table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.results-table thead th {
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.results-table tbody th {
+  font-weight: 500;
+}
+
+.results-table .n {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.results-table .group-row td {
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--ink-soft);
+  padding-top: 16px;
+}
+
+.results-table .is-ours {
+  background: var(--accent-soft);
+}
+
+.results-table td.win {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.results-table.compact {
+  max-width: 600px;
+  margin: 26px auto 0;
+}
+
+.tbl-note {
+  font-size: 13px;
+  color: var(--ink-faint);
+  margin-top: 10px;
+}
+
+details.more {
+  margin-top: 26px;
+}
+
+details.more summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* ---------- BibTeX ---------- */
+pre.bibtex {
+  background: #292524;
+  color: #e7e5e4;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  border-radius: 14px;
+  padding: 22px 26px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ---------- Footer ---------- */
+.page-footer {
+  border-top: 1px solid var(--line);
+  padding: 34px 24px 50px;
+  font-size: 13.5px;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+.footer-icon {
+  font-size: 22px;
+  color: var(--ink-soft) !important;
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 768px) {
+  .hero-header {
+    padding: 48px 16px 28px;
+  }
+  .teaser,
+  .page-section,
+  .page-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  /* Wide pipeline diagram: scroll sideways rather than shrink to unreadable */
+  .figure.pipeline {
+    min-width: 720px;
+  }
+}
+
+/* .figure's auto margin would otherwise cancel .spaced */
+.figure.spaced {
+  margin-top: 22px;
+}

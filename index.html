@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="Long-Term Multi-Session 3D Reconstruction Under Substantial Appearance Change: joint Structure-from-Motion with enforced cross-session correspondences for repeated underwater surveys captured years apart.">
+  <meta name="keywords" content="Structure-from-Motion, Multi-Session Reconstruction, Long-Term Monitoring, Coral Reef, Underwater, Visual Place Recognition">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Long-Term Multi-Session 3D Reconstruction Under Substantial Appearance Change</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="./static/images/favicon.svg">
+
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script defer src="./static/js/index.js"></script>
+</head>
+<body>
+
+<!-- ============================== Hero ============================== -->
+<header class="hero-header">
+  <div class="container is-max-desktop has-text-centered">
+    <h1 class="publication-title">Long-Term Multi-Session 3D Reconstruction Under Substantial Appearance Change</h1>
+    <p class="authors">
+      <span><a href="https://bev-gorry.github.io/">Beverley Gorry</a>,</span>
+      <span><a href="https://scholar.google.co.uk/citations?user=eq46ylAAAAAJ&hl=en">Tobias Fischer</a>,</span>
+      <span><a href="https://scholar.google.com/citations?user=TDSmCKgAAAAJ&hl=en">Michael Milford</a>,</span>
+      <span><a href="https://scholar.google.com/citations?user=SDtnGogAAAAJ&hl=es">Alejandro Fontan</a></span>
+    </p>
+    <p class="affil">QUT Centre for Robotics, Queensland University of Technology</p>
+
+    <div class="btn-row">
+      <a href="./static/assets/Gorry-B_LongTermMultiSession3D_2026.pdf" target="_blank" class="btn primary">
+        <i class="fas fa-file-pdf"></i><span>Paper</span>
+      </a>
+      <a href="https://arxiv.org/abs/2602.20584" target="_blank" class="btn">
+        <i class="ai ai-arxiv"></i><span>arXiv</span>
+      </a>
+      <!-- Swap for <a href="https://github.com/..." class="btn"> once the code is public -->
+      <span class="btn is-coming-soon" title="Code will be released soon">
+        <i class="fab fa-github"></i><span>Code (Coming Soon)</span>
+      </span>
+    </div>
+  </div>
+</header>
+
+<!-- ============================== Teaser ============================== -->
+<section class="teaser">
+  <div class="container is-max-desktop">
+    <!-- Fly-through video slot: replace the <img> below once a video is recorded.
+    <video id="teaser" autoplay muted loop playsinline width="100%">
+      <source src="./static/videos/teaser.mp4" type="video/mp4">
+    </video>
+    -->
+    <img src="./static/images/teaser.jpg" class="figure"
+         alt="Joint 3D point cloud of a coral reef with the footprints of three images of the same location taken in 2016, 2017 and 2018.">
+    <div class="legend has-text-centered">
+      <span class="swatch s1"></span>2016
+      <span class="swatch s2"></span>2017
+      <span class="swatch s3"></span>2018
+    </div>
+    <div class="tldr">
+      One coherent 3D model from coral reef surveys captured over a <strong>three-year period</strong> (2016&ndash;2018). Images of the same area from each year remain aligned at the pixel level within a shared coordinate frame, despite substantial changes to the reef.
+    </div>
+  </div>
+</section>
+
+<!-- ============================== Abstract ============================== -->
+<section class="page-section">
+  <div class="container is-max-desktop">
+    <h2>Abstract</h2>
+    <p>
+      Long-term environmental monitoring requires the ability to reconstruct and align 3D models across
+      repeated site visits separated by months or years to enable the detection of structural change and the
+      assessment of ecosystem health. However, existing Structure-from-Motion (SfM) pipelines are generally
+      designed for imagery captured within a limited time window and consequently fail in long-term monitoring
+      scenarios such as repeated coral reef surveys with substantial visual and structural change. In this paper,
+      we show that the primary limitation of current approaches lies in their inability to maintain visual
+      correspondences under substantial temporal appearance change. We address this limitation by enforcing
+      cross-session correspondences within a joint SfM reconstruction. Our approach combines handcrafted and
+      learned visual features to establish correspondences across large temporal gaps, enabling the
+      reconstruction of a single coherent 3D model from imagery captured years apart, where standard SfM fails
+      to connect sessions. To ensure scalability and further improve alignment robustness on large datasets, we
+      restrict expensive learned feature matching to a small set of likely cross-session image pairs identified
+      via visual place recognition, which reduces computational cost while improving the reliability of
+      cross-session correspondence establishment. We evaluate our method on long-term underwater datasets
+      exhibiting significant real-world change, and demonstrate consistent joint reconstruction across sessions
+      in cases where existing methods fail to connect the sessions or align them only coarsely.
+    </p>
+  </div>
+</section>
+
+<!-- ============================== The Challenge ============================== -->
+<section class="page-section">
+  <div class="container is-max-desktop">
+    <h2>The Challenge</h2>
+    <p>
+      Coral reefs are among the most biodiverse and valuable marine ecosystems, but are increasingly threatened by climate change and other anthropogenic stressors. Monitoring these environments relies on capturing and aligning repeated visual surveys over months or years. Between visits, reefs can undergo substantial appearance and structural change due to corals growing or dying, bleaching, severe storms, human activity, and changing water conditions. Standard Structure-from-Motion (SfM) pipelines assume the images were captured close together in time under similar visual conditions. When run jointly on surveys captured years apart, they <strong>fail to connect the sessions</strong>. An alternative approach is to reconstruct sessions independently and then align the surveys post-hoc by their geometry. Natural scenes like reefs have few stable, distinctive geometric landmarks, so post-hoc alignment leaves the sessions <strong>only coarsely aligned</strong>.
+
+      <!-- Reefs are monitored by surveying the same site again and again, often a year or more apart. Between visits,
+      corals grow, die, bleach or are broken by storms, and the lighting and water conditions change.
+      Standard SfM pipelines assume the images were captured close together in time. Run on surveys years apart,
+      they either <strong>fail to connect the sessions</strong>, or the sessions are reconstructed separately
+      and then <strong>aligned post-hoc</strong> by their geometry. Natural scenes like reefs have few stable,
+      distinctive geometric landmarks, so post-hoc alignment leaves the sessions only coarsely aligned. -->
+    </p>
+    <img src="./static/images/images_sesoko.jpg" class="figure spaced"
+         alt="Three images of the same reef location at Sesoko Island captured in 2016, 2017 and 2018.">
+    <p class="caption">
+      <strong>Sesoko Island, Okinawa</strong>: the same location in
+      <span class="year s1">2016</span>, <span class="year s2">2017</span> and <span class="year s3">2018</span>.
+      The 2018 survey was recorded shortly after Typhoon Trami.
+    </p>
+    <img src="./static/images/images_eiffel.jpg" class="figure"
+         alt="Images of the same location at the Eiffel Tower hydrothermal vent captured in 2016, 2018 and 2020.">
+    <p class="caption">
+      <strong>Eiffel Tower hydrothermal vent, Mid-Atlantic Ridge</strong>: repeated visits in
+      <span class="year s1">2016</span>, <span class="year s2">2018</span> and <span class="year s3">2020</span>
+      at ~1,700&nbsp;m depth.
+    </p>
+  </div>
+</section>
+
+<!-- ============================== Method ============================== -->
+<section class="page-section">
+  <div class="container is-max-desktop">
+    <h2>Method</h2>
+    <p>
+      When appearance change is severe and stable geometric landmarks are sparse, <strong>aligning independently reconstructed sessions by their geometry alone is insufficient</strong>. We argue that failure to establish <strong>reliable cross-session correspondence</strong> is the key limitation in existing methods. Our <strong>hybrid feature-based SfM pipeline</strong> enforces cross-session correspondences within a single joint reconstruction by combining handcrafted and learned features. Learned matching is applied only to candidate pairs retrieved by visual place recognition (VPR).
+      <!-- Our key finding is that the bottleneck is <strong>cross-session correspondences</strong>: which matches between images from different years reach the SfM optimiser. Rather than reconstructing each survey on its own and aligning the models afterwards, we provide images from all visits into a <strong>single joint reconstruction</strong> and enforce cross-session correspondences inside the optimisation. -->
+    </p>
+    <div class="scroll-x spaced"><img src="./static/images/pipeline.png" class="figure pipeline"
+         alt="Pipeline overview: images from several sessions, VPR candidate selection, hybrid SIFT and LightGlue matching, and joint COLMAP reconstruction."></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="num">01</div>
+        <h3>Joint SfM</h3>
+        <p>
+          All correspondences, within and across visits, are provided simultaneously to a single SfM reconstruction. Camera poses and 3D structure are jointly estimated from this combined correspondence set in one coordinate frame.
+        </p>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h3>Hybrid Matching</h3>
+        <p>
+          Fast, exhaustive <strong>SIFT</strong> matching establishes reliable correspondences within each session. Learned <strong>SuperPoint + LightGlue</strong> matching robustly finds the cross-session correspondences that handcrafted features miss under large appearance change.
+        </p>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h3>VPR-Guided Pair Selection</h3>
+        <p>
+          Visual place recognition (<strong>MegaLoc</strong>) selects candidate cross-session image pairs that are likely to observe the same place. Learned matching is applied only to these candidates, which keeps large datasets tractable.
+        </p>
+      </div>
+    </div>
+    <!-- <p class="spaced">
+      The SfM back-end (COLMAP) is left <strong>unmodified</strong>. The limitation lies in which
+      correspondences reach the optimizer, not in the optimization itself, so the approach can be dropped into
+      existing SfM pipelines. VPR only proposes candidate pairs and adds no geometric constraints. Geometric
+      verification and bundle adjustment still reject matches that are inconsistent with a single static scene.
+      Because the camera faces down and the vehicle can be rotated arbitrarily, retrieval and matching are both
+      evaluated at 0°, 90°, 180° and 270° image rotations.
+    </p> -->
+  </div>
+</section>
+
+<!-- ============================== Joint Reconstructions ============================== -->
+<section class="page-section">
+  <div class="container is-max-desktop">
+    <h2>Joint Reconstructions</h2>
+    <p>
+      Full multi-session reconstructions of both datasets. Points are coloured by the survey that observes them, showing that observations acquired at different times are jointly reconstructed into a single coherent 3D model despite substantial temporal appearance and structural changes.
+    </p>
+    <div class="legend has-text-centered spaced">
+      <span class="swatch s1"></span>Session 1
+      <span class="swatch s2"></span>Session 2
+      <span class="swatch s3"></span>Session 3
+      <span class="swatch multi"></span>Multiple sessions
+    </div>
+    <div class="columns is-vcentered">
+      <div class="column is-5">
+        <img src="./static/images/recon_sesoko.jpg" class="figure"
+             alt="Joint reconstruction of the full Sesoko dataset coloured by session.">
+        <p class="caption"><strong>Sesoko</strong>:
+          <span class="year s1">2016</span> / <span class="year s2">2017</span> / <span class="year s3">2018</span></p>
+      </div>
+      <div class="column is-7">
+        <img src="./static/images/recon_eiffel.jpg" class="figure"
+             alt="Joint reconstruction of the full Eiffel Tower dataset coloured by session.">
+        <p class="caption"><strong>Eiffel Tower</strong>:
+          <span class="year s1">2016</span> / <span class="year s2">2018</span> / <span class="year s3">2020</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== Baselines ============================== -->
+<section class="page-section supporting">
+  <div class="container is-max-desktop">
+    <h2>Comparison Against Baselines</h2>
+    <p>
+      We compare against joint reconstruction (COLMAP, MapAnything) and against post-hoc point cloud registration of independently reconstructed sessions (ICP, BUFFER-X). Accuracy is measured as the reprojection error of manually annotated correspondences between images from different years alongside the number of annotated points successfully reconstructed and projected by the method. Select a method to see its reconstruction of one Sesoko subset (ssk-s01), and its pixel-level alignment of a 2016&ndash;2017 image pair of the same place.
+    </p>
+
+    <div class="method-tabs spaced">
+      <button class="demo-tab" data-method="colmap">COLMAP</button>
+      <button class="demo-tab" data-method="mapanything">MapAnything</button>
+      <button class="demo-tab" data-method="icp">COLMAP + ICP</button>
+      <button class="demo-tab" data-method="bufferx">COLMAP + BUFFER-X</button>
+      <button class="demo-tab is-active" data-method="ours">Ours</button>
+    </div>
+    <p class="method-note" id="method-note"></p>
+
+    <img id="cloud-img" src="./static/images/s01_cloud_ours.jpg" class="figure cloud"
+         alt="Reconstruction of ssk-s01 by the selected method, cameras in red and points coloured by session.">
+
+    <div class="columns is-mobile is-multiline comparison-row">
+      <div class="column is-half-mobile is-3-tablet">
+        <img src="./static/images/s01_query.jpg" class="figure" alt="2016 query image with annotated points.">
+        <p class="caption">2016 query, with annotated points</p>
+      </div>
+      <div class="column is-half-mobile is-3-tablet">
+        <img id="pair-img" src="./static/images/s01_pair_ours.jpg" class="figure"
+             alt="2017 database image with annotated points and points projected by the selected method.">
+        <p class="caption">2017 database image: annotations vs. <span class="method-name">Ours</span> projections</p>
+      </div>
+      <div class="column is-half-mobile is-3-tablet">
+        <img src="./static/images/s01_warped.jpg" class="figure"
+             alt="The 2016 query image warped onto the 2017 image, showing the expected overlap.">
+        <p class="caption">Expected overlap (2016 query warped onto 2017 database image)</p>
+      </div>
+      <div class="column is-half-mobile is-3-tablet">
+        <img id="footprint-img" src="./static/images/s01_footprint_ours.jpg" class="figure"
+             alt="Top view of the reconstruction with the query and database image footprints.">
+        <p class="caption"><span class="method-name">Ours</span>: image footprints from above</p>
+      </div>
+    </div>
+    <p class="caption">
+      Yellow circles: annotated correspondences. Blue crosses: points projected by the reconstruction.
+      Red lines: reprojection error. Hollow circles: the query image was not registered.
+    </p>
+
+    <h3 class="sub-heading">Median Reprojection Error (px)</h3>
+    <div class="table-container">
+      <table class="results-table">
+        <thead>
+          <tr><th>Method</th><th>ssk-s01</th><th>ssk-s02</th><th>ssk-s03</th><th>ssk-s04</th><th>ssk-s05</th><th>ssk-full</th><th>eff-full</th></tr>
+        </thead>
+        <tbody>
+          <!-- Generated from overleaf tables/table_main_results.tex -->
+          <tr><th>COLMAP</th><td>&#10007;<span class="n">0/59</span></td><td>2.34<span class="n">37/85</span></td><td>2.36<span class="n">51/103</span></td><td>3.95<span class="n">12/35</span></td><td>5.09<span class="n">128/145</span></td><td>8.10<span class="n">59/98</span></td><td>14.82<span class="n">53/57</span></td></tr>
+          <tr><th>MapAnything</th><td>334.92<span class="n">56/59</span></td><td>448.47<span class="n">85/85</span></td><td>415.15<span class="n">100/103</span></td><td>76.98<span class="n">35/35</span></td><td>603.32<span class="n">143/145</span></td><td>&#10007;<span class="n">0/98</span></td><td>&#10007;<span class="n">0/57</span></td></tr>
+          <tr><th>COLMAP + ICP</th><td>371.19<span class="n">56/59</span></td><td>56.59<span class="n">79/85</span></td><td>40.15<span class="n">99/103</span></td><td>404.86<span class="n">34/35</span></td><td>366.09<span class="n">128/145</span></td><td>584.83<span class="n">59/98</span></td><td>108.72<span class="n">52/57</span></td></tr>
+          <tr><th>COLMAP + BUFFER-X</th><td>54.40<span class="n">56/59</span></td><td>36.03<span class="n">79/85</span></td><td>32.79<span class="n">99/103</span></td><td>68.31<span class="n">34/35</span></td><td>27.52<span class="n">128/145</span></td><td>86.75<span class="n">59/98</span></td><td>354.31<span class="n">52/57</span></td></tr>
+          <tr class="group-row"><td colspan="8">Same cross-session correspondences as ours, applied after independent reconstruction</td></tr>
+          <tr><th>Post-hoc Sim(3)</th><td>2.40<span class="n">56/59</span></td><td>3.89<span class="n">79/85</span></td><td>2.61<span class="n">99/103</span></td><td>6.60<span class="n">34/35</span></td><td>4.12<span class="n">128/145</span></td><td>20.96<span class="n">59/98</span></td><td>33.69<span class="n">52/57</span></td></tr>
+          <tr><th>Post-hoc Sim(3) + BA</th><td>1.70<span class="n">59/59</span></td><td>2.93<span class="n">85/85</span></td><td>2.31<span class="n">103/103</span></td><td>5.79<span class="n">35/35</span></td><td>3.31<span class="n">144/145</span></td><td>15.00<span class="n">89/98</span></td><td>28.71<span class="n">55/57</span></td></tr>
+          <tr class="is-ours"><th>Ours (joint)</th><td class="win">1.36<span class="n">59/59</span></td><td class="win">2.28<span class="n">85/85</span></td><td class="win">2.15<span class="n">103/103</span></td><td class="win">3.94<span class="n">35/35</span></td><td class="win">2.00<span class="n">145/145</span></td><td class="win">2.42<span class="n">92/98</span></td><td class="win">7.29<span class="n">57/57</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tbl-note">
+      Lower is better. Small numbers: annotated points evaluated by the method. &#10007;: the method failed to produce a complete point cloud, or no annotated points could be evaluated. The post-hoc variants are discussed <a href="#posthoc">below</a>.
+    </p>
+
+    <details class="more">
+      <summary>Scalability of VPR-guided matching</summary>
+      <p>
+        Exhaustive learned matching grows rapidly with the number of images. Restricting it to cross-session pairs, and then to VPR candidates, <strong>reduces total runtime</strong> on 740 images from 277 to 50 minutes
+        (&minus;82%) <strong>without reducing accuracy</strong> (2.00&nbsp;px with VPR-guided matching vs. 2.14&nbsp;px with exhaustive matching).
+      </p>
+      <img src="./static/images/matching_time.png" class="figure narrow spaced"
+           alt="Feature matching time against number of images for four matching strategies.">
+    </details>
+  </div>
+</section>
+
+<!-- ============================== Post-hoc with our correspondences (supporting) ============================== -->
+<section class="page-section supporting" id="posthoc">
+  <div class="container is-max-desktop">
+    <h2>Post-Hoc Alignment with Our Correspondences</h2>
+    <p>
+      To separate the contribution of the cross-session correspondences from that of integrating them jointly, we take exactly our VPR-selected pairs and verified cross-session correspondences and apply them only after each session has been reconstructed independently.
+      <!-- Is the gain from <em>which</em> correspondences we find, or from enforcing them <em>during</em>
+      reconstruction? To separate the two, we take exactly our VPR-selected cross-session correspondences and
+      apply them only after each session has been reconstructed on its own: -->
+    </p>
+    <ul class="plain-list">
+      <li><strong>Post-hoc Sim(3)</strong>: the matched keypoints are lifted to 3D in each session's own reconstruction, and each session is aligned to a reference session with a similarity transform (scale, rotation, translation) estimated from these correspondences.</li>
+      <li><strong>Post-hoc Sim(3) + BA</strong>: after the above alignment, all matches are triangulated across the
+        aligned sessions and refined with bundle adjustment.</li>
+    </ul>
+
+    <div class="steps findings">
+      <div class="step">
+        <div class="num">FINDING 1</div>
+        <h3>The Correspondences Are What Enable Multi-Session Alignment</h3>
+        <!-- <h3>The Cross-Session Correspondences Are What Enable Long-Term Multi-Session Reconstruction Under Substantial Appearance Change</h3> -->
+        <p>
+          With our correspondences, a single similarity transform already reaches 2.40&ndash;6.60&nbsp;px on the
+          Sesoko subsets. Registering the same reconstructions by geometry alone gives 28&ndash;405&nbsp;px
+          (ICP, BUFFER-X).
+        </p>
+      </div>
+      <div class="step">
+        <div class="num">FINDING 2</div>
+        <h3>Enforcing Them Jointly Is What Makes Them Most Effective</h3>
+        <p>
+          Our joint reconstruction is the most accurate on every dataset. The gap is small on the subsets but
+          grows on the full datasets, where the post-hoc errors are roughly 4&ndash;9&times; higher.
+        </p>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="results-table compact">
+        <thead>
+          <tr><th>Median RPE (px)</th><th>Sesoko subsets</th><th>ssk-full</th><th>eff-full</th></tr>
+        </thead>
+        <tbody>
+          <!-- From overleaf tables/table_main_results.tex (subsets: min-max over ssk-s01..s05) -->
+          <tr><th>Post-hoc Sim(3)</th><td>2.40&ndash;6.60</td><td>20.96</td><td>33.69</td></tr>
+          <tr><th>Post-hoc Sim(3) + BA</th><td>1.70&ndash;5.79</td><td>15.00</td><td>28.71</td></tr>
+          <tr class="is-ours"><th>Ours (joint)</th><td class="win">1.36&ndash;3.94</td><td class="win">2.42</td><td class="win">7.29</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== Annotation consistency (supporting) ============================== -->
+<section class="page-section supporting" id="annotation">
+  <div class="container is-max-desktop">
+    <h2>Annotation Consistency</h2>
+    <p>
+      Subpixel-accurate ground truth is unavailable for long-term multi-session reconstructions, so every method is scored against a fixed set of manually annotated cross-session correspondences. Annotators select only distinctive points on structure that is identifiable in both sessions, ensuring the evaluation is restricted to regions that remain stable between visits.
+    </p>
+    <p>
+      To verify the consistency of the annotations, a second annotator (not an author) independently re-annotated all 145 query points of ssk-s05 following the same protocol. The two annotators' clicks of the same point differ by a median of <strong>2.91&nbsp;px</strong>, which indicates the precision of the manual annotation. Scoring every method on each annotator's points gives <strong>the same ranking of methods</strong> for both annotators.
+    </p>
+
+    <div class="table-container">
+      <table class="results-table compact">
+        <thead>
+          <tr><th>Annotator</th><th>Ours</th><th>Post-hoc Sim(3)</th><th>COLMAP</th></tr>
+        </thead>
+        <tbody>
+          <!-- From the author response (ssk-s05, median reprojection error, n evaluated points) -->
+          <tr><th>A (original)</th><td class="win">2.00<span class="n">145/145</span></td><td>4.12<span class="n">128/145</span></td><td>5.09<span class="n">128/145</span></td></tr>
+          <tr><th>B</th><td class="win">2.71<span class="n">145/145</span></td><td>4.20<span class="n">128/145</span></td><td>5.03<span class="n">128/145</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tbl-note">
+      Median reprojection error (px) on ssk-s05 with each annotator's points. Small numbers: annotated points evaluated by the method.
+    </p>
+  </div>
+</section>
+
+<!-- ============================== Datasets ============================== -->
+<section class="page-section">
+  <div class="container is-max-desktop">
+    <h2>Datasets</h2>
+    <div class="columns">
+      <div class="column">
+        <img src="./static/images/gps_sesoko.png" class="figure narrow"
+             alt="Overlapping lawnmower survey trajectories at Sesoko Island for 2016, 2017 and 2018.">
+        <p class="caption">
+          <strong>Sesoko Island, Okinawa</strong>: mesophotic coral reef (~37&nbsp;m), AUV lawnmower surveys in
+          <span class="year s1">2016</span>, <span class="year s2">2017</span> and <span class="year s3">2018</span>.
+        </p>
+      </div>
+      <div class="column">
+        <img src="./static/images/gps_eiffel.png" class="figure narrow"
+             alt="Survey trajectories at the Eiffel Tower hydrothermal vent for 2016, 2018 and 2020.">
+        <p class="caption">
+          <strong>Eiffel Tower, Mid-Atlantic Ridge</strong>: deep-sea hydrothermal vent edifice (~1,700&nbsp;m),
+          ROV surveys in <span class="year s1">2016</span>, <span class="year s2">2018</span> and <span class="year s3">2020</span>
+          (<a href="https://doi.org/10.1177/02783649231177322" target="_blank">Boittiaux et al., 2023</a>).
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== BibTeX ============================== -->
+<section class="page-section" id="BibTeX">
+  <div class="container is-max-desktop">
+    <h2>BibTeX</h2>
+    <pre class="bibtex">@article{gorry2026longterm,
+    title={Long-Term Multi-Session 3D Reconstruction Under Substantial Appearance Change},
+    author={Beverley Gorry and Tobias Fischer and Michael Milford and Alejandro Fontan},
+    journal={arXiv preprint arXiv:2602.20584},
+    year={2026},
+}</pre>
+  </div>
+</section>
+
+<!-- ============================== Acknowledgements ============================== -->
+<section class="page-section" id="Acknowledgements">
+  <div class="container is-max-desktop">
+    <h2>Acknowledgements</h2>
+    <p class="muted">
+      This research was partially supported by funding from ARC Laureate Fellowship FL210100156 to Professor Michael Milford and ARC DECRA Fellowship DE240100149 to Associate Professor Tobias Fischer. The authors acknowledge continued support from the Queensland University of Technology (QUT) through the Centre for Robotics.
+    </p>
+    <p class="muted">
+      We build on <a href="https://colmap.github.io/" target="_blank">COLMAP</a>,
+      <a href="https://github.com/cvg/LightGlue" target="_blank">LightGlue</a>,
+      <a href="https://arxiv.org/abs/2502.17237" target="_blank">MegaLoc</a> and
+      <a href="https://github.com/alejandrofontan/VSLAM-LAB" target="_blank">VSLAM-LAB</a>, and compare against
+      <a href="https://github.com/facebookresearch/map-anything" target="_blank">MapAnything</a> and
+      <a href="https://github.com/MIT-SPARK/BUFFER-X" target="_blank">BUFFER-X</a>.
+      We thank the providers of the Sesoko and
+      <a href="https://doi.org/10.1177/02783649231177322" target="_blank">Eiffel Tower</a> datasets.
+    </p>
+  </div>
+</section>
+
+<footer class="page-footer">
+  <div class="container is-max-desktop">
+    <p>
+      <a href="https://github.com/bev-gorry" target="_blank" class="footer-icon" aria-label="GitHub"><i class="fab fa-github"></i></a>
+    </p>
+    <p>
+      This webpage template is adapted from <a href="https://github.com/nerfies/nerfies.github.io" target="_blank">Nerfies</a>
+      under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0 International License</a>.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
