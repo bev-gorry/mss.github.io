@@ -1,5 +1,5 @@
-// Method toggle for the baseline comparison: swaps the three method-specific images
-// (point cloud, reprojection overlay, footprints) and the one-line explanation.
+// Method toggle for the baseline comparison: swaps the method-specific point cloud (interactive viewer, with the
+// static render as fallback), reprojection overlay and footprints, and the one-line explanation.
 const METHODS = {
   colmap: {
     name: "COLMAP",
@@ -24,7 +24,12 @@ const METHODS = {
 };
 
 function showMethod(key) {
-  document.getElementById("cloud-img").src = `./static/images/s01_cloud_${key}.jpg`;
+  window.currentMethod = key;
+  if (window.cloudViewer) {
+    window.cloudViewer.show(key);   // interactive viewer (pointcloud.js)
+  } else {
+    document.getElementById("cloud-img").src = `./static/images/s01_cloud_${key}.jpg`;   // static fallback
+  }
   document.getElementById("pair-img").src = `./static/images/s01_pair_${key}.jpg`;
   document.getElementById("footprint-img").src = `./static/images/s01_footprint_${key}.jpg`;
   document.getElementById("method-note").textContent = METHODS[key].note;
@@ -42,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Preload the other methods' images so switching is instant
   Object.keys(METHODS).forEach((key) => {
-    ["cloud", "pair", "footprint"].forEach((kind) => {
+    ["pair", "footprint"].forEach((kind) => {
       new Image().src = `./static/images/s01_${kind}_${key}.jpg`;
     });
   });

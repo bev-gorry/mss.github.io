@@ -2,6 +2,12 @@
 
 Source code for the project page of *Long-Term Multi-Session 3D Reconstruction Under Substantial Appearance Change*.
 
+## Local Preview
+
+```bash
+python3 -m http.server 8000   # then open http://localhost:8000
+```
+
 ## Updating Figures
 
 Figures are converted from the paper's figure folder into `static/images/` (needs poppler's `pdftoppm` and Pillow):
@@ -10,10 +16,14 @@ Figures are converted from the paper's figure folder into `static/images/` (need
 python3 scripts/convert_figures.py /path/to/paper/figures
 ```
 
-## Local Preview
+## Updating Point Clouds
+
+The interactive ssk-s01 point clouds in the baseline comparison are small web copies of the session-coloured clouds
+(made by `vis/color_subsets_all_methods.sh` in the code repository). Re-export them into `static/pointclouds/` with
+(needs numpy):
 
 ```bash
-python3 -m http.server 8000   # then open http://localhost:8000
+python3 scripts/export_pointclouds.py <VSLAMLAB_EVALUATION>/colored/sskall-s01
 ```
 
 If you find this work useful, please cite:
