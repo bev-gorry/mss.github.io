@@ -26,6 +26,13 @@ The interactive ssk-s01 point clouds in the baseline comparison are small web co
 python3 scripts/export_pointclouds.py <VSLAMLAB_EVALUATION>/colored/sskall-s01
 ```
 
+The full-dataset clouds in Joint Reconstructions (400,000 points each) are exported from the Ours run folders:
+
+```bash
+python3 scripts/export_pointclouds.py --full <VSLAMLAB_EVALUATION>/exp_ssk_full_joint_cs100/SESOKO/sskall-full sesoko
+python3 scripts/export_pointclouds.py --full <VSLAMLAB_EVALUATION>/exp_eff_full_ours/EIFFEL/effall-full eiffel
+```
+
 If you find this work useful, please cite:
 ```bibtex
 @article{gorry2026longterm,

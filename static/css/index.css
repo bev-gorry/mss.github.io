@@ -515,7 +515,7 @@ pre.bibtex {
   cursor: grabbing;
 }
 
-.cloud-viewer.is-interactive #cloud-img {
+.cloud-viewer.is-interactive > img {
   display: none;
 }
 

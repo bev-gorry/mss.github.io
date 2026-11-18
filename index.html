@@ -218,6 +218,47 @@
           <span class="year s1">2016</span> / <span class="year s2">2018</span> / <span class="year s3">2020</span></p>
       </div>
     </div>
+
+    <p class="spaced">Select a dataset to explore its full reconstruction in 3D.</p>
+    <div class="dataset-tabs method-tabs">
+      <button class="demo-tab is-active" data-dataset="sesoko">Sesoko</button>
+      <button class="demo-tab" data-dataset="eiffel">Eiffel Tower</button>
+    </div>
+
+    <!-- Interactive point cloud (static/js/pointcloud.js). The image is the fallback without WebGL/JavaScript. -->
+    <div id="full-viewer" class="cloud-viewer" data-base="./static/pointclouds/full" data-default="sesoko"
+         data-point-size="0.006">
+      <img id="full-img" src="./static/images/recon_sesoko.jpg" class="figure"
+           alt="Joint reconstruction of the selected full dataset, points coloured by session.">
+      <div class="viewer-overlay" hidden></div>
+      <button class="viewer-reset" type="button">Reset view</button>
+      <div class="viewer-controls">
+        <div class="viewer-toggle" data-setting="points">
+          <span class="viewer-toggle-label">Points</span>
+          <div class="viewer-toggle-options">
+            <button type="button" data-value="session">Session</button>
+            <button type="button" data-value="image">Image</button>
+          </div>
+        </div>
+        <div class="viewer-toggle" data-setting="cameras">
+          <span class="viewer-toggle-label">Cameras</span>
+          <div class="viewer-toggle-options">
+            <button type="button" data-value="red">Red</button>
+            <button type="button" data-value="session">Session</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="viewer-hint">
+      <div class="legend" id="full-legend">
+        <span class="swatch s1"></span><span class="full-year">2016</span>
+        <span class="swatch s2"></span><span class="full-year">2017</span>
+        <span class="swatch s3"></span><span class="full-year">2018</span>
+        <span class="swatch multi"></span>Multiple sessions
+      </div>
+      Drag to rotate &middot; right-drag or two fingers to pan &middot; click, then scroll or pinch to zoom.<br>
+      Each cloud is a random sample of 400,000 points from the full reconstruction.
+    </div>
   </div>
 </section>
 
@@ -239,7 +280,7 @@
     <p class="method-note" id="method-note"></p>
 
     <!-- Interactive point cloud (static/js/pointcloud.js). The image is the fallback without WebGL/JavaScript. -->
-    <div id="cloud-viewer" class="cloud-viewer">
+    <div id="cloud-viewer" class="cloud-viewer" data-base="./static/pointclouds/s01" data-default="ours">
       <img id="cloud-img" src="./static/images/s01_cloud_ours.jpg" class="figure cloud"
            alt="Reconstruction of ssk-s01 by the selected method, cameras in red and points coloured by session.">
       <div class="viewer-overlay" hidden></div>

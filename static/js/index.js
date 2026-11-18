@@ -34,13 +34,38 @@ function showMethod(key) {
   document.getElementById("footprint-img").src = `./static/images/s01_footprint_${key}.jpg`;
   document.getElementById("method-note").textContent = METHODS[key].note;
   document.querySelectorAll(".method-name").forEach((el) => (el.textContent = METHODS[key].name));
-  document.querySelectorAll(".method-tabs .demo-tab").forEach((tab) => {
+  document.querySelectorAll(".method-tabs .demo-tab[data-method]").forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.method === key);
   });
 }
 
+// Dataset toggle for the Joint Reconstructions viewer: swaps the full-dataset point cloud (static top view as
+// fallback) and the years in its legend.
+const DATASETS = {
+  sesoko: { years: ["2016", "2017", "2018"] },
+  eiffel: { years: ["2016", "2018", "2020"] },
+};
+
+function showDataset(key) {
+  window.currentDataset = key;
+  if (window.fullViewer) {
+    window.fullViewer.show(key);   // interactive viewer (pointcloud.js)
+  } else {
+    document.getElementById("full-img").src = `./static/images/recon_${key}.jpg`;   // static fallback
+  }
+  document.querySelectorAll("#full-legend .full-year").forEach((el, i) => (el.textContent = DATASETS[key].years[i]));
+  document.querySelectorAll(".dataset-tabs .demo-tab").forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.dataset === key);
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".method-tabs .demo-tab").forEach((tab) => {
+  document.querySelectorAll(".dataset-tabs .demo-tab").forEach((tab) => {
+    tab.addEventListener("click", () => showDataset(tab.dataset.dataset));
+  });
+  showDataset("sesoko");
+
+  document.querySelectorAll(".method-tabs .demo-tab[data-method]").forEach((tab) => {
     tab.addEventListener("click", () => showMethod(tab.dataset.method));
   });
   showMethod("ours");

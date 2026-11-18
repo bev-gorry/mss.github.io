@@ -1,7 +1,16 @@
-"""Export the ssk-s01 reconstructions as small web copies for the interactive point cloud viewer.
+"""Export reconstructions as small web copies for the interactive point cloud viewers.
 
 Usage:
-    python3 scripts/export_pointclouds.py <VSLAMLAB_EVALUATION>/colored/sskall-s01
+    python3 scripts/export_pointclouds.py <VSLAMLAB_EVALUATION>/colored/sskall-s01      # baselines (ssk-s01)
+    python3 scripts/export_pointclouds.py --full <run folder> <key>                     # Joint Reconstructions
+        e.g. --full <VSLAMLAB_EVALUATION>/exp_ssk_full_joint_cs100/SESOKO/sskall-full sesoko
+             --full <VSLAMLAB_EVALUATION>/exp_eff_full_ours/EIFFEL/effall-full eiffel
+
+Full mode reads a run folder's colmap_00000/{points3D,images,cameras}.txt, which hold the original image colours,
+and rgb_exp.csv (image -> session). It writes static/pointclouds/full_<key>.ply and full_<key>_cams.json in the
+same formats as below.
+
+Baselines mode:
 
 Input (per method, made by multi-session-sfm/vis/color_subsets_all_methods.sh):
     <method>/model/points3D.txt   points, session-tinted colours and tracks (which images observe each point)
@@ -21,6 +30,7 @@ Each cloud is put in a normalised frame so the viewer can start from the same vi
 rotated so the reef plane is horizontal (PCA) with the cameras above it, scaled to unit radius. The methods live in
 different frames and scales (MapAnything is arbitrary), so each is normalised on its own. Needs only numpy.
 """
+import csv
 import json
 import sys
 from pathlib import Path
@@ -30,6 +40,8 @@ import numpy as np
 OUT_DIR = Path(__file__).resolve().parents[1] / "static" / "pointclouds"
 MAX_POINTS = 150_000    # keeps every file <= ~2.4 MB; only MapAnything (2M points) is subsampled
 FRUSTUM_DEPTH = 0.035   # frustum length in the normalised (unit radius) frame
+FULL_MAX_POINTS = 400_000   # ~6 MB per full dataset
+FULL_FRUSTUM_DEPTH = 0.006  # full surveys: thousands of cameras over a much larger area, so smaller frustums
 PREFIX = "s01"
 # page key -> folder name in the colored/ output
 METHODS = {"ours": "ours", "colmap": "colmap", "icp": "icp", "bufferx": "buffer", "mapanything": "mapanything"}
@@ -82,8 +94,10 @@ def read_cameras(model: Path) -> tuple[dict, dict]:
             fx, fy, cx, cy = p[:4]
         intrinsics[int(t[0])] = (w, h, fx, fy, cx, cy)
     images = {}
-    lines = [l for l in open(model / "images.txt") if not l.startswith("#")]
-    for line in lines[0::2]:                    # pose lines alternate with 2D-point lines
+    with open(model / "images.txt") as f:
+        lines = (l for l in f if not l.startswith("#"))
+        pose_lines = [l for i, l in enumerate(lines) if i % 2 == 0]   # pose lines alternate with 2D-point lines
+    for line in pose_lines:
         t = line.split()
         if len(t) < 10:
             continue
@@ -109,6 +123,28 @@ def read_points(model: Path, image_session: dict[int, int]) -> tuple[np.ndarray,
     # invert colour = uint8(0.6 * original + 0.4 * tint); +0.5 undoes the truncation on average
     original = (tinted + 0.5 - ALPHA_TINT * np.array(tints)) / (1 - ALPHA_TINT)
     return xyz, np.clip(np.round(original), 0, 255).astype(np.uint8), np.array(codes, dtype=np.uint8)
+
+
+def sessions_from_rgb_csv(run: Path) -> dict[str, int]:
+    """Image file name -> session index, from the run's rgb_exp.csv (sessions sorted by name, as the paper colours)."""
+    rows = list(csv.DictReader(open(run / "rgb_exp.csv")))
+    sessions = sorted({r["sequence_name"] for r in rows})
+    print(f"sessions: {', '.join(f'{i}={s}' for i, s in enumerate(sessions))}")
+    return {Path(r["path_rgb_0"]).name: sessions.index(r["sequence_name"]) for r in rows}
+
+
+def read_points_full(model: Path, image_session: dict[int, int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Points, their stored (original) colours and session codes. Like read_points, without un-tinting."""
+    xyz, rgb, codes = [], [], []
+    for line in open(model / "points3D.txt"):
+        if line.startswith("#") or not line.strip():
+            continue
+        t = line.split()
+        xyz.append(t[1:4])
+        rgb.append(t[4:7])
+        seen = {image_session[int(i)] for i in t[8::2] if int(i) in image_session}
+        codes.append(next(iter(seen)) if len(seen) == 1 else MULTIPLE if seen else UNKNOWN)
+    return np.array(xyz, dtype=np.float64), np.array(rgb, dtype=np.uint8), np.array(codes, dtype=np.uint8)
 
 
 def frustums(intrinsics: dict, images: dict) -> tuple[np.ndarray, np.ndarray]:
@@ -158,8 +194,36 @@ def write_ply(path: Path, xyz: np.ndarray, rgb: np.ndarray, session: np.ndarray)
         data.tofile(f)
 
 
-def main(src: Path) -> None:
+def export(name, xyz, rgb, session, intrinsics, images, image_session, rng, max_points, frustum_depth):
+    """Clip, subsample, normalise and write <name>.ply and <name>_cams.json to OUT_DIR."""
+    n_in = len(xyz)
+    # drop stray points so they don't dominate the scale and the initial view
+    lo, hi = np.percentile(xyz, 1, axis=0), np.percentile(xyz, 99, axis=0)
+    keep = np.all((xyz >= lo) & (xyz <= hi), axis=1)
+    xyz, rgb, session = xyz[keep], rgb[keep], session[keep]
+    if len(xyz) > max_points:
+        idx = rng.choice(len(xyz), max_points, replace=False)
+        xyz, rgb, session = xyz[idx], rgb[idx], session[idx]
+
+    centres, dirs = frustums(intrinsics, images)
+    xyz, centres, dirs = normalise(xyz, centres, dirs)
+    # the 4 image corners frustum_depth in front of each camera (dirs have unit depth along the optical axis,
+    # so all frustums have the same depth)
+    corners = centres[:, None, :] + frustum_depth * dirs
+    cams = [{"s": image_session.get(i, -1),
+             "f": np.round(np.vstack([c, k]), 4).ravel().tolist()}      # apex then 4 corners: 15 numbers
+            for i, c, k in zip(images, centres, corners)]
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    ply = OUT_DIR / f"{name}.ply"
+    write_ply(ply, xyz, rgb, session)
+    (OUT_DIR / f"{name}_cams.json").write_text(json.dumps(cams, separators=(",", ":")))
+    print(f"{name:16s} {n_in:>9,d} -> {len(xyz):>7,d} points, {len(cams):4d} cameras, "
+          f"{ply.stat().st_size / 1e6:.1f} MB")
+
+
+def main(src: Path) -> None:
+    """Baselines: every method's coloured ssk-s01 model."""
     name_session = session_of_images(src)
     rng = np.random.default_rng(0)             # fixed seed: re-exports give identical files
     for key, folder in METHODS.items():
@@ -167,32 +231,25 @@ def main(src: Path) -> None:
         intrinsics, images = read_cameras(model)
         image_session = {i: name_session[v[3]] for i, v in images.items() if v[3] in name_session}
         xyz, rgb, session = read_points(model, image_session)
-        n_in = len(xyz)
-        # drop stray points so they don't dominate the scale and the initial view
-        lo, hi = np.percentile(xyz, 1, axis=0), np.percentile(xyz, 99, axis=0)
-        keep = np.all((xyz >= lo) & (xyz <= hi), axis=1)
-        xyz, rgb, session = xyz[keep], rgb[keep], session[keep]
-        if len(xyz) > MAX_POINTS:
-            idx = rng.choice(len(xyz), MAX_POINTS, replace=False)
-            xyz, rgb, session = xyz[idx], rgb[idx], session[idx]
+        export(f"{PREFIX}_{key}", xyz, rgb, session, intrinsics, images, image_session, rng,
+               MAX_POINTS, FRUSTUM_DEPTH)
 
-        centres, dirs = frustums(intrinsics, images)
-        xyz, centres, dirs = normalise(xyz, centres, dirs)
-        # the 4 image corners FRUSTUM_DEPTH in front of each camera, scaled by the corner ray length so all
-        # frustums have the same depth along the optical axis
-        corners = centres[:, None, :] + FRUSTUM_DEPTH * dirs
-        cams = [{"s": image_session.get(i, -1),
-                 "f": np.round(np.vstack([c, k]), 4).ravel().tolist()}      # apex then 4 corners: 15 numbers
-                for i, c, k in zip(images, centres, corners)]
 
-        ply = OUT_DIR / f"{PREFIX}_{key}.ply"
-        write_ply(ply, xyz, rgb, session)
-        (OUT_DIR / f"{PREFIX}_{key}_cams.json").write_text(json.dumps(cams, separators=(",", ":")))
-        print(f"{key:12s} {n_in:>9,d} -> {len(xyz):>7,d} points, {len(cams):4d} cameras, "
-              f"{ply.stat().st_size / 1e6:.1f} MB")
+def main_full(run: Path, key: str) -> None:
+    """Joint Reconstructions: one full-dataset run (Ours)."""
+    model = run / "colmap_00000"
+    name_session = sessions_from_rgb_csv(run)
+    intrinsics, images = read_cameras(model)
+    image_session = {i: name_session[v[3]] for i, v in images.items() if v[3] in name_session}
+    xyz, rgb, session = read_points_full(model, image_session)
+    export(f"full_{key}", xyz, rgb, session, intrinsics, images, image_session, np.random.default_rng(0),
+           FULL_MAX_POINTS, FULL_FRUSTUM_DEPTH)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) == 4 and sys.argv[1] == "--full":
+        main_full(Path(sys.argv[2]), sys.argv[3])
+    elif len(sys.argv) == 2:
+        main(Path(sys.argv[1]))
+    else:
         sys.exit(__doc__)
-    main(Path(sys.argv[1]))

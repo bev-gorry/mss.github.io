@@ -1,6 +1,10 @@
-// Interactive point cloud viewer for the baseline comparison (three.js).
-// The method tabs (index.js) call window.cloudViewer.show(key). Clouds are loaded on first use and cached.
-// If WebGL or this module fails, the static render already in the page (#cloud-img) stays visible.
+// Interactive point cloud viewers (three.js), one per .cloud-viewer[data-base] element:
+//  - #cloud-viewer (Comparison Against Baselines): the method tabs (index.js) call window.cloudViewer.show(key);
+//  - #full-viewer (Joint Reconstructions): the dataset tabs call window.fullViewer.show(key).
+// Each element sets data-base (file prefix: <base>_<key>.ply and <base>_<key>_cams.json), data-default (first key)
+// and optionally data-point-size. Clouds are loaded on first use and cached; a viewer loads nothing until it is near
+// the screen and only renders while visible. If WebGL or this module fails, the static image inside each element
+// stays visible.
 //
 // Rendering:
 //  - points are round discs sized in world units, so they grow when zooming in (detail, not blobs);
@@ -13,8 +17,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { PLYLoader } from "three/addons/loaders/PLYLoader.js";
 
-const BASE = "./static/pointclouds/s01";
-const POINT_WORLD_SIZE = 0.009;    // disc diameter in the normalised (unit radius) frame
+const POINT_WORLD_SIZE = 0.009;    // default disc diameter in the normalised (unit radius) frame
 const EDL_STRENGTH = 15;           // higher = darker relief shading
 // Session colouring of the points: the image colour is first lightened towards white (LIFT), then mixed with the
 // session colour (TINT). The paper figures use LIFT 0, TINT 0.4; underwater images are dark, so that reads heavy here.
@@ -94,6 +97,8 @@ const EDL_FRAGMENT = /* glsl */ `
 function rgb01(c) { return c.map((v) => v / 255); }
 
 function createViewer(container) {
+  const base = container.dataset.base;
+  const pointSize = parseFloat(container.dataset.pointSize) || POINT_WORLD_SIZE;
   const renderer = new THREE.WebGLRenderer({ antialias: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;   // pass colours straight through
@@ -153,7 +158,7 @@ function createViewer(container) {
     uUseImage: { value: 0 },
     uTint: { value: TINT },
     uLift: { value: LIFT },
-    uWorldSize: { value: POINT_WORLD_SIZE },
+    uWorldSize: { value: pointSize },
     uViewportHeight: { value: 1 },
   };
   const pointMaterial = new THREE.ShaderMaterial({ vertexShader: POINT_VERTEX, fragmentShader: POINT_FRAGMENT, uniforms: pointUniforms });
@@ -197,8 +202,8 @@ function createViewer(container) {
   function load(key) {
     if (!cache[key]) {
       cache[key] = Promise.all([
-        loader.loadAsync(`${BASE}_${key}.ply`),
-        fetch(`${BASE}_${key}_cams.json`).then((r) => r.json()),
+        loader.loadAsync(`${base}_${key}.ply`),
+        fetch(`${base}_${key}_cams.json`).then((r) => r.json()),
       ]).then(([geometry, cams]) => {
         geometry.deleteAttribute("color");   // unused (see the loader note above)
         return { points: new THREE.Points(geometry, pointMaterial), frustums: buildFrustums(cams) };
@@ -272,7 +277,12 @@ function createViewer(container) {
 
   container.querySelector(".viewer-reset").addEventListener("click", resetView);
 
+  // render only while on screen, so several viewers on the page don't all draw every frame
+  let visible = false;
+  new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; }).observe(container);
+
   renderer.setAnimationLoop(() => {
+    if (!visible) return;
     controls.update();
     renderer.setRenderTarget(target);
     renderer.render(scene, camera);
@@ -285,12 +295,31 @@ function createViewer(container) {
   return { show };
 }
 
-const container = document.getElementById("cloud-viewer");
-try {
-  const viewer = createViewer(container);
-  container.classList.add("is-interactive");   // CSS hides the static fallback image
-  window.cloudViewer = viewer;
-  viewer.show(window.currentMethod || "ours");
-} catch (err) {
-  console.warn("Interactive viewer unavailable, keeping the static image.", err);
+// global name each viewer is published under, and the global that holds a tab picked before this module loaded
+const GLOBALS = {
+  "cloud-viewer": { viewer: "cloudViewer", selected: "currentMethod" },
+  "full-viewer": { viewer: "fullViewer", selected: "currentDataset" },
+};
+
+for (const container of document.querySelectorAll(".cloud-viewer[data-base]")) {
+  const names = GLOBALS[container.id];
+  try {
+    const viewer = createViewer(container);
+    container.classList.add("is-interactive");   // CSS hides the static fallback image
+    // Until the viewer is near the screen, tabs only record their choice; then load whatever is selected.
+    let started = false;
+    let pending = window[names.selected] || container.dataset.default;
+    window[names.viewer] = {
+      show(key) { pending = key; if (started) viewer.show(key); },
+    };
+    const near = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      near.disconnect();
+      started = true;
+      viewer.show(pending);
+    }, { rootMargin: "400px 0px" });
+    near.observe(container);
+  } catch (err) {
+    console.warn("Interactive viewer unavailable, keeping the static image.", err);
+  }
 }
