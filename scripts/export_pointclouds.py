@@ -7,8 +7,10 @@ Usage:
              --full <VSLAMLAB_EVALUATION>/exp_eff_full_ours/EIFFEL/effall-full eiffel
 
 Full mode reads a run folder's colmap_00000/{points3D,images,cameras}.txt, which hold the original image colours,
-and rgb_exp.csv (image -> session). It writes static/pointclouds/full_<key>.ply and full_<key>_cams.json in the
-same formats as below.
+and rgb_exp.csv (image -> session). It removes floating points in two steps before subsampling: (1) weakly supported
+SfM points (short track or high reprojection error), then (2) statistical outlier removal (points far from their
+nearest neighbours). It writes static/pointclouds/full_<key>.ply and full_<key>_cams.json in the same formats as
+below. Needs numpy and scipy (full mode only).
 
 Baselines mode:
 
@@ -41,6 +43,11 @@ OUT_DIR = Path(__file__).resolve().parents[1] / "static" / "pointclouds"
 MAX_POINTS = 150_000    # keeps every file <= ~2.4 MB; only MapAnything (2M points) is subsampled
 FRUSTUM_DEPTH = 0.035   # frustum length in the normalised (unit radius) frame
 FULL_MAX_POINTS = 400_000   # ~6 MB per full dataset
+# floating point removal (full mode)
+MIN_TRACK = 2           # images observing the point (2 is the minimum for triangulation)
+MAX_ERROR = 1.5         # mean reprojection error, pixels
+SOR_K = 16              # neighbours for statistical outlier removal
+SOR_STD = 2.0           # drop points whose mean neighbour distance is > mean + SOR_STD * std over all points
 FULL_FRUSTUM_DEPTH = 0.006  # full surveys: thousands of cameras over a much larger area, so smaller frustums
 PREFIX = "s01"
 # page key -> folder name in the colored/ output
@@ -133,18 +140,32 @@ def sessions_from_rgb_csv(run: Path) -> dict[str, int]:
     return {Path(r["path_rgb_0"]).name: sessions.index(r["sequence_name"]) for r in rows}
 
 
-def read_points_full(model: Path, image_session: dict[int, int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Points, their stored (original) colours and session codes. Like read_points, without un-tinting."""
-    xyz, rgb, codes = [], [], []
+def read_points_full(model: Path, image_session: dict[int, int]):
+    """Points, their stored (original) colours, session codes, reprojection errors and track lengths.
+    Like read_points, without un-tinting."""
+    xyz, rgb, codes, error, track = [], [], [], [], []
     for line in open(model / "points3D.txt"):
         if line.startswith("#") or not line.strip():
             continue
         t = line.split()
         xyz.append(t[1:4])
         rgb.append(t[4:7])
-        seen = {image_session[int(i)] for i in t[8::2] if int(i) in image_session}
+        error.append(t[7])
+        observers = t[8::2]
+        track.append(len(observers))
+        seen = {image_session[int(i)] for i in observers if int(i) in image_session}
         codes.append(next(iter(seen)) if len(seen) == 1 else MULTIPLE if seen else UNKNOWN)
-    return np.array(xyz, dtype=np.float64), np.array(rgb, dtype=np.uint8), np.array(codes, dtype=np.uint8)
+    return (np.array(xyz, dtype=np.float64), np.array(rgb, dtype=np.uint8), np.array(codes, dtype=np.uint8),
+            np.array(error, dtype=np.float32), np.array(track))
+
+
+def statistical_inliers(xyz: np.ndarray) -> np.ndarray:
+    """Mask of points whose mean distance to their SOR_K nearest neighbours is not unusually large
+    (as Open3D's remove_statistical_outlier). Scale-free, so it works in the model's own units."""
+    from scipy.spatial import cKDTree         # only needed in full mode
+    dist, _ = cKDTree(xyz).query(xyz, k=SOR_K + 1, workers=-1)
+    mean_dist = dist[:, 1:].mean(axis=1)      # column 0 is the point itself
+    return mean_dist <= mean_dist.mean() + SOR_STD * mean_dist.std()
 
 
 def frustums(intrinsics: dict, images: dict) -> tuple[np.ndarray, np.ndarray]:
@@ -160,8 +181,10 @@ def frustums(intrinsics: dict, images: dict) -> tuple[np.ndarray, np.ndarray]:
     return np.array(centres), np.array(corners)
 
 
-def normalise(xyz, centres, dirs):
-    """Centre, rotate so the plane normal is +z with cameras above, scale to unit radius."""
+def normalise(xyz, centres, dirs, box_centre=False):
+    """Centre, rotate so the plane normal is +z with cameras above, scale to unit radius.
+    Centre: the median (robust to strays); with box_centre, horizontally the midpoint of the rotated bounding box (for
+    clouds already cleaned of outliers, whose median can sit far off-centre when one part of the survey is denser)."""
     centre = np.median(xyz, axis=0)
     p = xyz - centre
     # PCA: eigenvectors sorted by variance; the smallest-variance axis is the reef plane's normal
@@ -175,6 +198,10 @@ def normalise(xyz, centres, dirs):
     p = p @ R.T
     c = (centres - centre) @ R.T
     d = dirs @ R.T                             # directions rotate but don't translate
+    if box_centre:                             # in the rotated frame, so the box is aligned with the view axes
+        mid = (p.min(axis=0) + p.max(axis=0)) / 2
+        mid[2] = 0                             # horizontal only: the median height frames tall scenes better
+        p, c = p - mid, c - mid
     scale = np.linalg.norm(p, axis=1).max()    # whole cloud (outliers already dropped) inside the unit sphere
     return (p / scale).astype(np.float32), c / scale, d
 
@@ -194,7 +221,8 @@ def write_ply(path: Path, xyz: np.ndarray, rgb: np.ndarray, session: np.ndarray)
         data.tofile(f)
 
 
-def export(name, xyz, rgb, session, intrinsics, images, image_session, rng, max_points, frustum_depth):
+def export(name, xyz, rgb, session, intrinsics, images, image_session, rng, max_points, frustum_depth,
+           box_centre=False):
     """Clip, subsample, normalise and write <name>.ply and <name>_cams.json to OUT_DIR."""
     n_in = len(xyz)
     # drop stray points so they don't dominate the scale and the initial view
@@ -206,7 +234,7 @@ def export(name, xyz, rgb, session, intrinsics, images, image_session, rng, max_
         xyz, rgb, session = xyz[idx], rgb[idx], session[idx]
 
     centres, dirs = frustums(intrinsics, images)
-    xyz, centres, dirs = normalise(xyz, centres, dirs)
+    xyz, centres, dirs = normalise(xyz, centres, dirs, box_centre)
     # the 4 image corners frustum_depth in front of each camera (dirs have unit depth along the optical axis,
     # so all frustums have the same depth)
     corners = centres[:, None, :] + frustum_depth * dirs
@@ -241,9 +269,19 @@ def main_full(run: Path, key: str) -> None:
     name_session = sessions_from_rgb_csv(run)
     intrinsics, images = read_cameras(model)
     image_session = {i: name_session[v[3]] for i, v in images.items() if v[3] in name_session}
-    xyz, rgb, session = read_points_full(model, image_session)
+    xyz, rgb, session, error, track = read_points_full(model, image_session)
+    n = len(xyz)
+    # (1) weakly supported SfM points, then (2) points isolated from their neighbours. Both run on the full cloud:
+    # after random subsampling every point looks more isolated.
+    keep = (track >= MIN_TRACK) & (error < MAX_ERROR)
+    xyz, rgb, session = xyz[keep], rgb[keep], session[keep]
+    n_quality = len(xyz)
+    keep = statistical_inliers(xyz)
+    xyz, rgb, session = xyz[keep], rgb[keep], session[keep]
+    print(f"{key}: {n:,d} points; track/error filter removed {n - n_quality:,d}, "
+          f"outlier removal removed {n_quality - len(xyz):,d}")
     export(f"full_{key}", xyz, rgb, session, intrinsics, images, image_session, np.random.default_rng(0),
-           FULL_MAX_POINTS, FULL_FRUSTUM_DEPTH)
+           FULL_MAX_POINTS, FULL_FRUSTUM_DEPTH, box_centre=True)
 
 
 if __name__ == "__main__":

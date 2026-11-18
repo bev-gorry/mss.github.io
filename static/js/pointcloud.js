@@ -2,7 +2,7 @@
 //  - #cloud-viewer (Comparison Against Baselines): the method tabs (index.js) call window.cloudViewer.show(key);
 //  - #full-viewer (Joint Reconstructions): the dataset tabs call window.fullViewer.show(key).
 // Each element sets data-base (file prefix: <base>_<key>.ply and <base>_<key>_cams.json), data-default (first key)
-// and optionally data-point-size. Clouds are loaded on first use and cached; a viewer loads nothing until it is near
+// and optionally data-point-size, data-points (session | image) and data-cameras (red | session | hidden). Clouds are loaded on first use and cached; a viewer loads nothing until it is near
 // the screen and only renders while visible. If WebGL or this module fails, the static image inside each element
 // stays visible.
 //
@@ -26,6 +26,10 @@ const LIFT = 0.0;
 const EDL_RADIUS = 1.5;            // neighbour distance, in device pixels
 // oblique side view, like the paper figure: misaligned sessions show up as separate layers
 const START = new THREE.Vector3(0, -1.9, 0.6);
+// per-cloud starting views (camera position and orbit target, normalised frame); others use START looking at 0
+const START_VIEWS = {
+  eiffel: { position: [-0.905, -1.163, 1.377], target: [-0.021, 0.014, 0] },
+};
 
 // sRGB 0-255 colours, passed through unchanged (no colour management), so they match the paper figures
 const CAMERA_RED = [214, 39, 40];
@@ -152,7 +156,8 @@ function createViewer(container) {
   const edlCamera = new THREE.Camera();
 
   // ---- display settings, shared by all methods (toggles in the viewer)
-  const settings = { points: "session", cameras: "red" };
+  // defaults: data-points / data-cameras on the viewer element, else session-coloured points and red cameras
+  const settings = { points: container.dataset.points || "session", cameras: container.dataset.cameras || "red" };
   const pointUniforms = {
     uSessionColours: { value: [...SESSION_COLOURS, NO_SESSION].map((c) => new THREE.Vector3(...rgb01(c))) },
     uUseImage: { value: 0 },
@@ -208,7 +213,7 @@ function createViewer(container) {
         fetch(`${base}_${key}_cams.json`).then((r) => r.json()),
       ]).then(([geometry, cams]) => {
         geometry.deleteAttribute("color");   // unused (see the loader note above)
-        return { points: new THREE.Points(geometry, pointMaterial), frustums: buildFrustums(cams) };
+        return { key, points: new THREE.Points(geometry, pointMaterial), frustums: buildFrustums(cams) };
       });
       cache[key].catch(() => delete cache[key]);   // allow a retry after a network error
     }
@@ -216,9 +221,12 @@ function createViewer(container) {
   }
 
   function resetView() {
+    const view = START_VIEWS[current?.key];
+    const target = view ? new THREE.Vector3(...view.target) : new THREE.Vector3();
+    const offset = (view ? new THREE.Vector3(...view.position) : START.clone()).sub(target);
     // narrow (phone) viewers: step back so the whole cloud still fits horizontally
-    camera.position.copy(START).multiplyScalar(Math.max(1, 1.35 / camera.aspect));
-    controls.target.set(0, 0, 0);
+    camera.position.copy(target).add(offset.multiplyScalar(Math.max(1, 1.35 / camera.aspect)));
+    controls.target.copy(target);
     controls.update();
   }
 

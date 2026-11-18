@@ -11,11 +11,11 @@ const METHODS = {
   },
   icp: {
     name: "COLMAP + ICP",
-    note: "COLMAP + ICP reconstructs sessions independently and performs registration by geometry alone. The pointclouds overlap, but the image footprints are misplaced.",
+    note: "COLMAP + ICP reconstructs sessions independently and performs registration by geometry alone. The point clouds overlap, but the image footprints are misplaced.",
   },
   bufferx: {
     name: "COLMAP + BUFFER-X",
-    note: "COLMAP + BUFFER-X presents a learned point cloud registration of the independently reconstructed sessions. Coarsely aligned, with footprints still misplaced.",
+    note: "COLMAP + BUFFER-X applies a learned point cloud registration of the independently reconstructed sessions. Coarsely aligned, with footprints still misplaced.",
   },
   ours: {
     name: "Ours",
@@ -40,11 +40,7 @@ function showMethod(key) {
 }
 
 // Dataset toggle for the Joint Reconstructions viewer: swaps the full-dataset point cloud (static top view as
-// fallback) and the years in its legend.
-const DATASETS = {
-  sesoko: { years: ["2016", "2017", "2018"] },
-  eiffel: { years: ["2016", "2018", "2020"] },
-};
+// fallback).
 
 function showDataset(key) {
   window.currentDataset = key;
@@ -53,7 +49,6 @@ function showDataset(key) {
   } else {
     document.getElementById("full-img").src = `./static/images/recon_${key}.jpg`;   // static fallback
   }
-  document.querySelectorAll("#full-legend .full-year").forEach((el, i) => (el.textContent = DATASETS[key].years[i]));
   document.querySelectorAll(".dataset-tabs .demo-tab").forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.dataset === key);
   });

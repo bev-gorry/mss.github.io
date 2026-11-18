@@ -9,7 +9,7 @@
   <title>Long-Term Multi-Session 3D Reconstruction Under Substantial Appearance Change</title>
 
   <!-- Social media link previews (Open Graph: LinkedIn, Facebook, Slack, etc.; Twitter/X card).
-       og:url and og:image must be absolute URLs: update them if the site moves (e.g. after the account transfer).
+       og:url and og:image must be absolute URLs: update them if the site moves.
        The image is made from scripts/social_card.html. -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="Long-Term Multi-Session 3D Reconstruction Under Substantial Appearance Change">
@@ -121,13 +121,6 @@
     <h2>The Challenge</h2>
     <p>
       Coral reefs are among the most biodiverse and valuable marine ecosystems, but are increasingly threatened by climate change and other anthropogenic stressors. Monitoring these environments relies on capturing and aligning repeated visual surveys over months or years. Between visits, reefs can undergo substantial appearance and structural change due to corals growing or dying, bleaching, severe storms, human activity, and changing water conditions. Standard Structure-from-Motion (SfM) pipelines assume the images were captured close together in time under similar visual conditions. When run jointly on surveys captured years apart, they <strong>fail to connect the sessions</strong>. An alternative approach is to reconstruct sessions independently and then align the surveys post-hoc by their geometry. Natural scenes like reefs have few stable, distinctive geometric landmarks, so post-hoc alignment leaves the sessions <strong>only coarsely aligned</strong>.
-
-      <!-- Reefs are monitored by surveying the same site again and again, often a year or more apart. Between visits,
-      corals grow, die, bleach or are broken by storms, and the lighting and water conditions change.
-      Standard SfM pipelines assume the images were captured close together in time. Run on surveys years apart,
-      they either <strong>fail to connect the sessions</strong>, or the sessions are reconstructed separately
-      and then <strong>aligned post-hoc</strong> by their geometry. Natural scenes like reefs have few stable,
-      distinctive geometric landmarks, so post-hoc alignment leaves the sessions only coarsely aligned. -->
     </p>
     <img src="./static/images/images_sesoko.jpg" class="figure spaced"
          alt="Three images of the same reef location at Sesoko Island captured in 2016, 2017 and 2018.">
@@ -151,8 +144,7 @@
   <div class="container is-max-desktop">
     <h2>Method</h2>
     <p>
-      When appearance change is severe and stable geometric landmarks are sparse, <strong>aligning independently reconstructed sessions by their geometry alone is insufficient</strong>. We argue that failure to establish <strong>reliable cross-session correspondence</strong> is the key limitation in existing methods. Our <strong>hybrid feature-based SfM pipeline</strong> enforces cross-session correspondences within a single joint reconstruction by combining handcrafted and learned features. Learned matching is applied only to candidate pairs retrieved by visual place recognition (VPR).
-      <!-- Our key finding is that the bottleneck is <strong>cross-session correspondences</strong>: which matches between images from different years reach the SfM optimiser. Rather than reconstructing each survey on its own and aligning the models afterwards, we provide images from all visits into a <strong>single joint reconstruction</strong> and enforce cross-session correspondences inside the optimisation. -->
+      When appearance change is severe and stable geometric landmarks are sparse, <strong>aligning independently reconstructed sessions by their geometry alone is insufficient</strong>. We argue that failure to establish <strong>reliable cross-session correspondences</strong> is the key limitation in existing methods. Our <strong>hybrid feature-based SfM pipeline</strong> enforces cross-session correspondences within a single joint reconstruction by combining handcrafted and learned features. Learned matching is applied only to candidate pairs retrieved by visual place recognition (VPR).
     </p>
     <div class="scroll-x spaced"><img src="./static/images/pipeline.png" class="figure pipeline"
          alt="Pipeline overview: images from several sessions, VPR candidate selection, hybrid SIFT and LightGlue matching, and joint COLMAP reconstruction."></div>
@@ -227,7 +219,7 @@
 
     <!-- Interactive point cloud (static/js/pointcloud.js). The image is the fallback without WebGL/JavaScript. -->
     <div id="full-viewer" class="cloud-viewer" data-base="./static/pointclouds/full" data-default="sesoko"
-         data-point-size="0.006">
+         data-point-size="0.006" data-points="image" data-cameras="hidden">
       <img id="full-img" src="./static/images/recon_sesoko.jpg" class="figure"
            alt="Joint reconstruction of the selected full dataset, points coloured by session.">
       <div class="viewer-overlay" hidden></div>
@@ -251,12 +243,6 @@
       </div>
     </div>
     <div class="viewer-hint">
-      <div class="legend" id="full-legend">
-        <span class="swatch s1"></span><span class="full-year">2016</span>
-        <span class="swatch s2"></span><span class="full-year">2017</span>
-        <span class="swatch s3"></span><span class="full-year">2018</span>
-        <span class="swatch multi"></span>Multiple sessions
-      </div>
       Drag to rotate &middot; right-drag or two fingers to pan &middot; click, then scroll or pinch to zoom.<br>
       Each cloud is a random sample of 400,000 points from the full reconstruction.
     </div>
@@ -268,7 +254,7 @@
   <div class="container is-max-desktop">
     <h2>Comparison Against Baselines</h2>
     <p>
-      We compare against joint reconstruction (COLMAP, MapAnything) and against post-hoc point cloud registration of independently reconstructed sessions (ICP, BUFFER-X). Accuracy is measured as the reprojection error of manually annotated correspondences between images from different years alongside the number of annotated points successfully reconstructed and projected by the method. Select a method to see its reconstruction of one Sesoko subset (ssk-s01), and its pixel-level alignment of a 2016&ndash;2017 image pair of the same place.
+      We compare against joint reconstruction (COLMAP, MapAnything) and against post-hoc point cloud registration of independently reconstructed sessions (ICP, BUFFER-X). Accuracy is measured as the reprojection error of manually annotated correspondences between images from different years, alongside the number of annotated points successfully reconstructed and projected by the method. Select a method to see its reconstruction of one Sesoko subset (ssk-s01), and its pixel-level alignment of a 2016&ndash;2017 image pair of the same place.
     </p>
 
     <div class="method-tabs spaced">
@@ -365,7 +351,7 @@
     </p>
 
     <details class="more">
-      <summary>Scalability of VPR-guided matching</summary>
+      <summary>Scalability of VPR-Guided Matching</summary>
       <p>
         Exhaustive learned matching grows rapidly with the number of images. Restricting it to cross-session pairs, and then to VPR candidates, <strong>reduces total runtime</strong> on 740 images from 277 to 50 minutes
         (&minus;82%) <strong>without reducing accuracy</strong> (2.00&nbsp;px with VPR-guided matching vs. 2.14&nbsp;px with exhaustive matching).
@@ -389,9 +375,6 @@
     <h2>Post-Hoc Alignment with Our Correspondences</h2>
     <p>
       To separate the contribution of the cross-session correspondences from that of integrating them jointly, we take exactly our VPR-selected pairs and verified cross-session correspondences and apply them only after each session has been reconstructed independently.
-      <!-- Is the gain from <em>which</em> correspondences we find, or from enforcing them <em>during</em>
-      reconstruction? To separate the two, we take exactly our VPR-selected cross-session correspondences and
-      apply them only after each session has been reconstructed on its own: -->
     </p>
     <ul class="plain-list">
       <li><strong>Post-hoc Sim(3)</strong>: the matched keypoints are lifted to 3D in each session's own reconstruction, and each session is aligned to a reference session with a similarity transform (scale, rotation, translation) estimated from these correspondences.</li>
@@ -426,7 +409,6 @@
           <tr><th>Median RPE (px)</th><th>Sesoko subsets</th><th>ssk-full</th><th>eff-full</th></tr>
         </thead>
         <tbody>
-          <!-- From overleaf tables/table_main_results.tex (subsets: min-max over ssk-s01..s05) -->
           <tr><th>Post-hoc Sim(3)</th><td>2.40&ndash;6.60</td><td>20.96</td><td>33.69</td></tr>
           <tr><th>Post-hoc Sim(3) + BA</th><td>1.70&ndash;5.79</td><td>15.00</td><td>28.71</td></tr>
           <tr class="is-ours"><th>Ours (joint)</th><td class="win">1.36&ndash;3.94</td><td class="win">2.42</td><td class="win">7.29</td></tr>
@@ -453,7 +435,6 @@
           <tr><th>Annotator</th><th>Ours</th><th>Post-hoc Sim(3)</th><th>COLMAP</th></tr>
         </thead>
         <tbody>
-          <!-- From the author response (ssk-s05, median reprojection error, n evaluated points) -->
           <tr><th>A (original)</th><td class="win">2.00<span class="n">145/145</span></td><td>4.12<span class="n">128/145</span></td><td>5.09<span class="n">128/145</span></td></tr>
           <tr><th>B</th><td class="win">2.71<span class="n">145/145</span></td><td>4.20<span class="n">128/145</span></td><td>5.03<span class="n">128/145</span></td></tr>
         </tbody>
