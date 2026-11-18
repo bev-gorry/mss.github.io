@@ -191,6 +191,8 @@ function createViewer(container) {
   }
 
   function colourFrustums(lines) {
+    lines.visible = settings.cameras !== "hidden";
+    if (!lines.visible) return;
     const colours = lines.geometry.attributes.color;
     lines.geometry.userData.sessions.forEach((s, i) => {
       const c = settings.cameras === "red" ? CAMERA_RED : (SESSION_COLOURS[s] || NO_SESSION);
